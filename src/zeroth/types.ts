@@ -1,43 +1,43 @@
-export type ZerothLogicExpression =
-  | ZerothLogicPropositionExpression
-  | ZerothLogicReferenceExpression
-  | ZerothLogicUnaryExpression
-  | ZerothLogicBinaryExpression
+export type Expression =
+  | PropositionExpression
+  | ReferenceExpression
+  | UnaryExpression
+  | BinaryExpression
 ;
 
-export interface ZerothLogicPropositionExpression extends ZerothLogicBaseExpression {
-  readonly logicExpressionType: ZerothLogicExpressionTypes.PROPOSITION;
+export interface PropositionExpression extends BaseExpression {
+  readonly logicExpressionType: ExpressionTypes.PROPOSITION;
   readonly identifier: string;
 }
 
-export interface ZerothLogicReferenceExpression extends ZerothLogicBaseExpression {
-  readonly logicExpressionType: ZerothLogicExpressionTypes.REFERENCE;
+export interface ReferenceExpression extends BaseExpression {
+  readonly logicExpressionType: ExpressionTypes.REFERENCE;
   readonly lineNumber: number;
 }
 
-export interface ZerothLogicUnaryExpression extends ZerothLogicBaseExpression {
-  readonly logicExpressionType: ZerothLogicExpressionTypes.UNARY;
-  readonly operator: ZerothLogicUnaryOperator;
-  readonly operand: ZerothLogicExpression;
+export interface UnaryExpression extends BaseExpression {
+  readonly logicExpressionType: ExpressionTypes.UNARY;
+  readonly operator: UnaryOperator;
+  readonly operand: Expression;
 }
 
-export interface ZerothLogicBinaryExpression extends ZerothLogicBaseExpression {
-  readonly logicExpressionType: ZerothLogicExpressionTypes.BINARY;
-  readonly operator: ZerothLogicBinaryOperator;
-  readonly operands: [ZerothLogicExpression, ZerothLogicExpression];
+export interface BinaryExpression extends BaseExpression {
+  readonly logicExpressionType: ExpressionTypes.BINARY;
+  readonly operator: BinaryOperator;
+  readonly operands: [Expression, Expression];
 }
 
-interface ZerothLogicBaseExpression {
-  readonly logicExpressionType: ZerothLogicExpressionTypes;
+interface BaseExpression {
+  readonly logicExpressionType: ExpressionTypes;
 }
 
-export enum ZerothLogicExpressionTypes {
+export enum ExpressionTypes {
   PROPOSITION = 'LOGIC_PROPOSITION',
   REFERENCE = 'LOGIC_REFERENCE',
   UNARY = 'LOGIC_UNARY',
   BINARY = 'LOGIC_BINARY',
 }
 
-export type ZerothLogicUnaryOperator = '~';
+export type UnaryOperator = '~';
 
-export type ZerothLogicBinaryOperator = '/\\' | '\\/' | '->';
+export type BinaryOperator = '/\\' | '\\/' | '->';

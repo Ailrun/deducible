@@ -1,36 +1,36 @@
 import {
-  ZerothLogicBinaryExpression,
-  ZerothLogicExpression,
-  ZerothLogicExpressionTypes,
-  ZerothLogicPropositionExpression,
-  ZerothLogicReferenceExpression,
-  ZerothLogicUnaryExpression,
+  BinaryExpression,
+  Expression,
+  ExpressionTypes,
+  PropositionExpression,
+  ReferenceExpression,
+  UnaryExpression,
 } from './types';
 
 export const isNaivelyUnifiable = (
-  sourceExpr: ZerothLogicExpression,
-  targetExpr: ZerothLogicExpression,
+  sourceExpr: Expression,
+  targetExpr: Expression,
 ): boolean => {
-  const constraints: [string, ZerothLogicExpression][] = [];
-  const stack: [ZerothLogicExpression, ZerothLogicExpression][] = [[sourceExpr, targetExpr]];
+  const constraints: [string, Expression][] = [];
+  const stack: [Expression, Expression][] = [[sourceExpr, targetExpr]];
 
   let stackEntry = stack.pop();
   while (stackEntry !== undefined) {
     const [sExpr, tExpr] = stackEntry;
 
     switch (sExpr.logicExpressionType) {
-      case ZerothLogicExpressionTypes.PROPOSITION: {
+      case ExpressionTypes.PROPOSITION: {
         constraints.push([sExpr.identifier, tExpr]);
         break;
       }
-      case ZerothLogicExpressionTypes.REFERENCE: {
+      case ExpressionTypes.REFERENCE: {
         if (tExpr.logicExpressionType === sExpr.logicExpressionType
             && sExpr.lineNumber === tExpr.lineNumber) {
           break;
         }
         return false;
       }
-      case ZerothLogicExpressionTypes.UNARY: {
+      case ExpressionTypes.UNARY: {
         if (tExpr.logicExpressionType === sExpr.logicExpressionType
             /* This is necessary to be future-proof */
             /* eslint-disable-next-line @typescript-eslint/no-unnecessary-condition */
@@ -41,7 +41,7 @@ export const isNaivelyUnifiable = (
 
         return false;
       }
-      case ZerothLogicExpressionTypes.BINARY: {
+      case ExpressionTypes.BINARY: {
         if (tExpr.logicExpressionType === sExpr.logicExpressionType
             && sExpr.operator === tExpr.operator) {
           stack.push([sExpr.operands[0], tExpr.operands[0]]);
@@ -56,7 +56,7 @@ export const isNaivelyUnifiable = (
     stackEntry = stack.pop();
   }
 
-  const constrainedAssignment: Record<string, ZerothLogicExpression | undefined> = {};
+  const constrainedAssignment: Record<string, Expression | undefined> = {};
 
   for (const [identifier, expr] of constraints) {
     const assigned = constrainedAssignment[identifier];
@@ -70,24 +70,24 @@ export const isNaivelyUnifiable = (
   return true;
 };
 
-export const equal = (expr0: ZerothLogicExpression, expr1: ZerothLogicExpression): boolean => {
+export const equal = (expr0: Expression, expr1: Expression): boolean => {
   if (expr0.logicExpressionType !== expr1.logicExpressionType) {
     return false;
   }
 
   switch (expr0.logicExpressionType) {
-    case ZerothLogicExpressionTypes.PROPOSITION:
-      return expr0.identifier === (expr1 as ZerothLogicPropositionExpression).identifier;
-    case ZerothLogicExpressionTypes.REFERENCE:
-      return expr0.lineNumber === (expr1 as ZerothLogicReferenceExpression).lineNumber;
-    case ZerothLogicExpressionTypes.UNARY:
+    case ExpressionTypes.PROPOSITION:
+      return expr0.identifier === (expr1 as PropositionExpression).identifier;
+    case ExpressionTypes.REFERENCE:
+      return expr0.lineNumber === (expr1 as ReferenceExpression).lineNumber;
+    case ExpressionTypes.UNARY:
       /* This is necessary to be future-proof */
       /* eslint-disable-next-line @typescript-eslint/no-unnecessary-condition */
-      return expr0.operator === (expr1 as ZerothLogicUnaryExpression).operator
-        && expr0.operand === (expr1 as ZerothLogicUnaryExpression).operand;
-    case ZerothLogicExpressionTypes.BINARY:
-      return expr0.operator === (expr1 as ZerothLogicBinaryExpression).operator
-        && expr0.operands[0] === (expr1 as ZerothLogicBinaryExpression).operands[0]
-        && expr0.operands[1] === (expr1 as ZerothLogicBinaryExpression).operands[1];
+      return expr0.operator === (expr1 as UnaryExpression).operator
+        && expr0.operand === (expr1 as UnaryExpression).operand;
+    case ExpressionTypes.BINARY:
+      return expr0.operator === (expr1 as BinaryExpression).operator
+        && expr0.operands[0] === (expr1 as BinaryExpression).operands[0]
+        && expr0.operands[1] === (expr1 as BinaryExpression).operands[1];
   }
 };

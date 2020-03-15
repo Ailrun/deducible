@@ -1,38 +1,38 @@
 import Parsimmon from 'parsimmon';
 
 import {
-  ZerothLogicBinaryExpression,
-  ZerothLogicBinaryOperator,
-  ZerothLogicExpression,
-  ZerothLogicExpressionTypes,
-  ZerothLogicPropositionExpression,
-  ZerothLogicReferenceExpression,
-  ZerothLogicUnaryExpression,
-  ZerothLogicUnaryOperator,
+  BinaryExpression,
+  BinaryOperator,
+  Expression,
+  ExpressionTypes,
+  PropositionExpression,
+  ReferenceExpression,
+  UnaryExpression,
+  UnaryOperator,
 } from './types';
 
 const expressionToken = <T>(p: Parsimmon.Parser<T>): Parsimmon.Parser<T> => {
   return p.skip(Parsimmon.regexp(/ */));
 };
 
-const unaryOperator = (Parsimmon.string('~') as Parsimmon.Parser<ZerothLogicUnaryOperator>)
+const unaryOperator = (Parsimmon.string('~') as Parsimmon.Parser<UnaryOperator>)
   .thru(expressionToken)
   .desc('unary operator');
-const binaryOperator = (Parsimmon.regexp(/\/\\|\\\/|->/) as Parsimmon.Parser<ZerothLogicBinaryOperator>)
+const binaryOperator = (Parsimmon.regexp(/\/\\|\\\/|->/) as Parsimmon.Parser<BinaryOperator>)
   .thru(expressionToken)
   .desc('binary operators');
 
 const propositionExpression = Parsimmon.regexp(/[a-zA-Z_'][a-zA-Z0-9_']*/)
-  .map((identifier): ZerothLogicPropositionExpression => ({
-    logicExpressionType: ZerothLogicExpressionTypes.PROPOSITION,
+  .map((identifier): PropositionExpression => ({
+    logicExpressionType: ExpressionTypes.PROPOSITION,
     identifier,
   }))
   .thru(expressionToken)
   .desc('proposition');
 
 const referenceExpression = Parsimmon.digit.atLeast(1).tie()
-  .map((lineNumberString): ZerothLogicReferenceExpression => ({
-    logicExpressionType: ZerothLogicExpressionTypes.REFERENCE,
+  .map((lineNumberString): ReferenceExpression => ({
+    logicExpressionType: ExpressionTypes.REFERENCE,
     lineNumber: parseInt(lineNumberString, 10),
   }))
   .thru(expressionToken)
@@ -50,8 +50,8 @@ const unaryExpression = Parsimmon.alt(
   Parsimmon.seqMap(
     unaryOperator,
     atomicExpression,
-    (operator, operand): ZerothLogicUnaryExpression => ({
-      logicExpressionType: ZerothLogicExpressionTypes.UNARY,
+    (operator, operand): UnaryExpression => ({
+      logicExpressionType: ExpressionTypes.UNARY,
       operator,
       operand,
     }),
@@ -65,8 +65,8 @@ const binaryExpression = Parsimmon.alt(
     unaryExpression,
     binaryOperator,
     unaryExpression,
-    (operand0, operator, operand1): ZerothLogicBinaryExpression => ({
-      logicExpressionType: ZerothLogicExpressionTypes.BINARY,
+    (operand0, operator, operand1): BinaryExpression => ({
+      logicExpressionType: ExpressionTypes.BINARY,
       operator,
       operands: [operand0, operand1],
     }),
@@ -75,7 +75,7 @@ const binaryExpression = Parsimmon.alt(
 )
   .thru(expressionToken);
 
-const expression: Parsimmon.Parser<ZerothLogicExpression> = Parsimmon.alt(
+const expression: Parsimmon.Parser<Expression> = Parsimmon.alt(
   binaryExpression,
 )
   .thru(expressionToken);
