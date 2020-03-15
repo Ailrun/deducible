@@ -1,0 +1,31 @@
+{
+  "name": "deducible",
+  "version": "0.0.1",
+  "keywords": [
+    "logic",
+    "logical",
+    "proposition",
+    "predicate"
+  ],
+  "license": "MIT",
+  "author": {
+    "name": "Junyoung Clare Jang",
+    "email": "jjc9310@gmail.com"
+  },
+  "main": "dist/index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/Ailrun/deducible.git"
+  },
+  "scripts": {
+    "build": "tsc -p .",
+    "start": "node -e \"console.error(\\\"This library does not have any way to start!\\n\\\"); process.exit(1)\""
+  },
+  "dependencies": {
+    "@types/parsimmon": "^1.10.1",
+    "parsimmon": "^1.13.0"
+  },
+  "devDependencies": {
+    "typescript": "^3.8.3"
+  }
+}
