@@ -1,5 +1,1 @@
-import * as zeroth from './zeroth';
-
-export {
-  zeroth,
-};
+export * as zeroth from './zeroth';

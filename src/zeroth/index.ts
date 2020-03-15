@@ -1,9 +1,4 @@
-import * as parser from './parser';
-import * as types from './types';
-import * as unification from './unification';
-
-export {
-  parser,
-  types,
-  unification,
-};
+export * as equal from './equal';
+export * as parser from './parser';
+export * as types from './types';
+export * as unification from './unification';
