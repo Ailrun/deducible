@@ -1,10 +1,26 @@
-export type Proof = [Expression, Rule][];
+export type Proof = ProofLine[];
+
+export type ProofLine = [Expression, Rule];
+
+export type InternalProof = InternalProofLine[];
+
+export type InternalProofLine = [Expression, Rule, Set<number>];
 
 export type Rule =
   | PremiseRule
-  // Loop through all arities and all nary operators of those arities
-  | { [n in Arity]: { [op in NaryOperator<n>]: IntroductionRule<n, op> | EliminationRule<n, op>; }[NaryOperator<n>]; }[Arity]
+  | IntroductionRules
+  | EliminationRules
   ;
+
+export type IntroductionRules = {
+    // Loop through all arities and all nary operators of those arities
+    [n in Arity]: { [op in NaryOperator<n>]: IntroductionRule<n, op>; }[NaryOperator<n>];
+  }[Arity];
+
+export type EliminationRules = {
+    // Loop through all arities and all nary operators of those arities
+    [n in Arity]: { [op in NaryOperator<n>]: EliminationRule<n, op>; }[NaryOperator<n>];
+  }[Arity];
 
 export interface PremiseRule extends BaseRule {
   readonly type: RuleTypes.PREMISE;
@@ -12,6 +28,8 @@ export interface PremiseRule extends BaseRule {
 
 export interface IntroductionRule<n extends Arity, op extends NaryOperator<n>> extends BaseRule {
   readonly type: RuleTypes.INTRODUCTION;
+  readonly arity: n;
+  readonly operator: op;
   readonly arguments:
   [n] extends [1]
   ? ([op] extends ['~']
@@ -30,6 +48,8 @@ export interface IntroductionRule<n extends Arity, op extends NaryOperator<n>> e
 
 export interface EliminationRule<n extends Arity, op extends NaryOperator<n>> extends BaseRule {
   readonly type: RuleTypes.ELIMINATION;
+  readonly arity: n;
+  readonly operator: op;
   readonly arguments:
   [n] extends [1]
   ? ([op] extends ['~']
@@ -76,7 +96,8 @@ export interface ReferenceExpression extends BaseExpression {
 }
 
 export interface NaryExpression<n extends Arity> extends BaseExpression {
-  readonly type: NaryBase<n, ExpressionTypes.UNARY, ExpressionTypes.BINARY>;
+  readonly type: ExpressionTypes.NARY;
+  readonly arity: n;
   readonly operator: NaryOperator<n>;
   readonly operands: NaryBase<n, [Expression], [Expression, Expression]>;
 }
@@ -88,8 +109,7 @@ interface BaseExpression {
 export enum ExpressionTypes {
   PROPOSITION = 'ZEROTH_EXPR_PROPOSITION',
   REFERENCE = 'ZEROTH_EXPR_REFERENCE',
-  UNARY = 'ZEROTH_EXPR_UNARY',
-  BINARY = 'ZEROTH_EXPR_BINARY',
+  NARY = 'ZEROTH_EXPR_NARY',
 }
 
 export type NaryOperator<n extends Arity> =

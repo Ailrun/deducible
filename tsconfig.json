@@ -5,6 +5,7 @@
     "forceConsistentCasingInFileNames": true,
     "importsNotUsedAsValues": "remove",
     "jsx": "preserve",
+    "lib": ["ESnext"],
     "noErrorTruncation": true,
     "noFallthroughCasesInSwitch": true,
     "noImplicitAny": true,
@@ -16,7 +17,7 @@
     "strictFunctionTypes": true,
     "strictPropertyInitialization": true,
     "strictNullChecks": true,
-    "target": "ES5",
+    "target": "ES2015",
     "useDefineForClassFields": true
   },
   "include": [

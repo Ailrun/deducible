@@ -42,7 +42,8 @@ const unaryExpression = Parsimmon.alt(
     unaryOperator,
     atomicExpression,
     (operator, operand): types.NaryExpression<1> => ({
-      type: types.ExpressionTypes.UNARY,
+      type: types.ExpressionTypes.NARY,
+      arity: 1,
       operator,
       operands: [operand],
     }),
@@ -57,7 +58,8 @@ const binaryExpression = Parsimmon.alt(
     binaryOperator,
     unaryExpression,
     (operand0, operator, operand1): types.NaryExpression<2> => ({
-      type: types.ExpressionTypes.BINARY,
+      type: types.ExpressionTypes.NARY,
+      arity: 2,
       operator,
       operands: [operand0, operand1],
     }),
@@ -66,7 +68,7 @@ const binaryExpression = Parsimmon.alt(
 )
   .thru(expressionToken);
 
-const expression: Parsimmon.Parser<types.Expression> = Parsimmon.alt(
+export const expression: Parsimmon.Parser<types.Expression> = Parsimmon.alt(
   binaryExpression,
 )
   .thru(expressionToken);
