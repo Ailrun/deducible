@@ -1,7 +1,7 @@
+import assert from 'assert';
+
 import * as equal from './equal';
 import { Expression, ExpressionTypes } from './types';
-
-declare function assert(value: unknown): asserts value;
 
 export const isUnifiable = (
   sourceExpr: Expression,

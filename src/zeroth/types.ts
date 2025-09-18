@@ -1,10 +1,17 @@
 export type Proof = ProofLine[];
 
-export type ProofLine = [Expression, Rule];
+export interface ProofLine {
+  readonly expr: Expression;
+  readonly rule: Rule;
+}
 
 export type InternalProof = InternalProofLine[];
 
-export type InternalProofLine = [Expression, Rule, Set<number>];
+export interface InternalProofLine {
+  readonly expr: Expression;
+  readonly rule: Rule;
+  readonly premises: Set<number>;
+}
 
 export type Rule =
   | PremiseRule
@@ -30,7 +37,7 @@ export interface IntroductionRule<n extends Arity, op extends NaryOperator<n>> e
   readonly type: RuleTypes.INTRODUCTION;
   readonly arity: n;
   readonly operator: op;
-  readonly arguments:
+  readonly ruleArguments:
   [n] extends [1]
   ? ([op] extends ['~']
     ? [RuleArgument]
@@ -50,7 +57,7 @@ export interface EliminationRule<n extends Arity, op extends NaryOperator<n>> ex
   readonly type: RuleTypes.ELIMINATION;
   readonly arity: n;
   readonly operator: op;
-  readonly arguments:
+  readonly ruleArguments:
   [n] extends [1]
   ? ([op] extends ['~']
     ? [RuleArgument, RuleArgument]

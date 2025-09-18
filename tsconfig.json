@@ -6,6 +6,7 @@
     "importsNotUsedAsValues": "remove",
     "jsx": "preserve",
     "lib": ["ESnext"],
+    "moduleResolution": "bundler",
     "noErrorTruncation": true,
     "noFallthroughCasesInSwitch": true,
     "noImplicitAny": true,
