@@ -1,7 +1,7 @@
 import assert from 'assert';
 
 import * as equal from './equal';
-import { EliminationRule, EliminationRules, Expression, ExpressionTypes, InternalProof, IntroductionRule, IntroductionRules, NaryExpression, Proof, ProofLine, RuleTypes } from './types';
+import { EliminationRule, EliminationRules, Expression, ExpressionTypes, InternalProof, InternalProofLine, IntroductionRule, IntroductionRules, NaryExpression, Premises, Proof, ProofLine, RuleTypes } from './types';
 
 export const CheckProofOf = (prf: Proof, expr: Expression): InternalProof | undefined => {
   const proof = checkProof(prf);
@@ -36,21 +36,30 @@ export const checkProofLine = (
   proof: InternalProof,
   line: ProofLine,
 ): InternalProof | undefined => {
+  let premises: Premises | undefined;
   switch (line.rule.type) {
     case RuleTypes.PREMISE:
-      return proof.concat({ ...line, premises: new Set([proof.length]) });
+      premises = new Set([proof.length]);
+      break;
     case RuleTypes.INTRODUCTION:
-      return checkIntroductionRule(proof, line.expr, line.rule);
+      premises = checkIntroductionRule(proof, line.expr, line.rule);
+      break;
     case RuleTypes.ELIMINATION:
-      return checkEliminationRule(proof, line.expr, line.rule);
+      premises = checkEliminationRule(proof, line.expr, line.rule);
+      break;
   }
+
+  if (premises === undefined)
+    return undefined;
+
+  return proof.concat({ ...line, premises });
 };
 
 const checkIntroductionRule = (
   proof: InternalProof,
   lineExpr: Expression,
   lineRule: IntroductionRules,
-): InternalProof | undefined => {
+): Premises | undefined => {
   if (lineExpr.type !== ExpressionTypes.NARY
     || lineExpr.operator !== lineRule.operator)
     return undefined;
@@ -75,34 +84,45 @@ const checkNegationIntroductionRule = (
   proof: InternalProof,
   lineExpr: NaryExpression<1>,
   lineRule: IntroductionRule<1, '~'>,
-): InternalProof | undefined => {
+): Premises | undefined => {
   const [negatedExpr] = lineExpr.operands;
 
-  const [ruleArg] = lineRule.ruleArguments;
+  const [ruleArg0, ruleArg1] = lineRule.ruleArguments;
 
-  if (ruleArg === undefined)
+  if (ruleArg0 === undefined)
     return undefined;
 
-  // TODO: implement this!
-  return undefined;
-  // const referredLine = proof[ruleArg];
+  const { expr: referredLine0Expr, premises: referredLine0Premises } = proof[ruleArg0];
+  const dispatchedPremise0 = getPremiseNumberOfExprs(proof, referredLine0Premises, [negatedExpr], undefined);
+  const referredLine0PremisesMinus = dispatchedPremise0 === undefined
+    ? referredLine0Premises
+    : referredLine0Premises.difference(new Set([dispatchedPremise0]));
 
-  // const referredLineNumber = getPremiseNumberOfExprs(proof, [negatedExpr], ruleArg);
+  const referredLine1Possibilities: Expression[] = [{ type: ExpressionTypes.NARY, arity: 1, operator: '~', operands: [referredLine0Expr] }];
+  if (referredLine0Expr.type === ExpressionTypes.NARY
+    && referredLine0Expr.operator === '~')
+    referredLine1Possibilities.push(referredLine0Expr.operands[0]);
 
-  // return referredLineNumber !== undefined
-  //   ? proof.concat({
-  //     expr: lineExpr,
-  //     rule: lineRule,
-  //     premises: proof[referredLineNumber].premises,
-  //   })
-  //   : undefined;
+  const referredLine1Number = getLineNumberOfExprs(proof, referredLine1Possibilities, ruleArg1);
+  if (referredLine1Number === undefined)
+    return undefined;
+
+  const referredLine1Premises = proof[referredLine1Number].premises;
+  const dispatchedPremise1 = getPremiseNumberOfExprs(proof, referredLine1Premises, [negatedExpr], undefined);
+  const referredLine1PremisesMinus = dispatchedPremise1 === undefined
+    ? referredLine1Premises
+    : referredLine1Premises.difference(new Set([dispatchedPremise1]));
+
+  return referredLine1Number !== undefined
+    ? referredLine0PremisesMinus.union(referredLine1PremisesMinus)
+    : undefined;
 };
 
 const checkConjunctionIntroductionRule = (
   proof: InternalProof,
   lineExpr: NaryExpression<2>,
   lineRule: IntroductionRule<2, '/\\'>,
-): InternalProof | undefined => {
+): Premises | undefined => {
   const [leftExpr, rightExpr] = lineExpr.operands;
 
   const [ruleArg0, ruleArg1] = lineRule.ruleArguments;
@@ -111,11 +131,7 @@ const checkConjunctionIntroductionRule = (
   const referredLine1Number = getLineNumberOfExprs(proof, [rightExpr], ruleArg1);
 
   return referredLine0Number !== undefined && referredLine1Number !== undefined
-    ? proof.concat({
-      expr: lineExpr,
-      rule: lineRule,
-      premises: proof[referredLine0Number].premises.union(proof[referredLine1Number].premises),
-    })
+    ? proof[referredLine0Number].premises.union(proof[referredLine1Number].premises)
     : undefined;
 };
 
@@ -123,7 +139,7 @@ const checkDisjunctionIntroductionRule = (
   proof: InternalProof,
   lineExpr: NaryExpression<2>,
   lineRule: IntroductionRule<2, '\\/'>,
-): InternalProof | undefined => {
+): Premises | undefined => {
   const [leftExpr, rightExpr] = lineExpr.operands;
 
   const [ruleArg] = lineRule.ruleArguments;
@@ -131,11 +147,7 @@ const checkDisjunctionIntroductionRule = (
   const referredLineNumber = getLineNumberOfExprs(proof, [leftExpr, rightExpr], ruleArg);
 
   return referredLineNumber !== undefined
-    ? proof.concat({
-      expr: lineExpr,
-      rule: lineRule,
-      premises: proof[referredLineNumber].premises,
-    })
+    ? proof[referredLineNumber].premises
     : undefined;
 };
 
@@ -143,7 +155,7 @@ const checkImplicationIntroductionRule = (
   proof: InternalProof,
   lineExpr: NaryExpression<2>,
   lineRule: IntroductionRule<2, '->'>,
-): InternalProof | undefined => {
+): Premises | undefined => {
   const [leftExpr, rightExpr] = lineExpr.operands;
 
   const [ruleArg0, ruleArg1] = lineRule.ruleArguments;
@@ -155,14 +167,10 @@ const checkImplicationIntroductionRule = (
 
   const referredLine1 = proof[referredLine1Number];
 
-  const referredLine0Number = getPremiseNumberOfExprs(proof, referredLine1.premises, [leftExpr], ruleArg0);
+  const dispatchedPremise0 = getPremiseNumberOfExprs(proof, referredLine1.premises, [leftExpr], ruleArg0);
 
-  return referredLine0Number !== undefined && referredLine1 !== undefined
-    ? proof.concat({
-      expr: lineExpr,
-      rule: lineRule,
-      premises: referredLine1.premises.difference(new Set([referredLine0Number])),
-    })
+  return dispatchedPremise0 !== undefined && referredLine1 !== undefined
+    ? referredLine1.premises.difference(new Set([dispatchedPremise0]))
     : undefined;
 };
 
@@ -170,7 +178,7 @@ const checkEliminationRule = (
   proof: InternalProof,
   lineExpr: Expression,
   lineRule: EliminationRules,
-): InternalProof | undefined => {
+): Premises | undefined => {
   switch (lineRule.operator) {
     case '~': return checkNegationEliminationRule(proof, lineExpr, lineRule);
     case '/\\': return checkConjunctionEliminationRule(proof, lineExpr, lineRule);
@@ -181,9 +189,9 @@ const checkEliminationRule = (
 
 const checkNegationEliminationRule = (
   proof: InternalProof,
-  lineExpr: Expression,
+  _lineExpr: Expression,
   lineRule: EliminationRule<1, '~'>,
-): InternalProof | undefined => {
+): Premises | undefined => {
   const [ruleArg0, ruleArg1] = lineRule.ruleArguments;
 
   if (ruleArg0 === undefined)
@@ -198,11 +206,7 @@ const checkNegationEliminationRule = (
   const referredLine1Number = getLineNumberOfExprs(proof, referredLine1Possibilities, ruleArg1);
 
   return referredLine1Number !== undefined
-    ? proof.concat({
-      expr: lineExpr,
-      rule: lineRule,
-      premises: referredLine0.premises.union(proof[referredLine1Number].premises),
-    })
+    ? referredLine0.premises.union(proof[referredLine1Number].premises)
     : undefined;
 };
 
@@ -210,7 +214,7 @@ const checkConjunctionEliminationRule = (
   proof: InternalProof,
   lineExpr: Expression,
   lineRule: EliminationRule<2, '/\\'>,
-): InternalProof | undefined => {
+): Premises | undefined => {
   const [ruleArg] = lineRule.ruleArguments;
 
   if (ruleArg === undefined)
@@ -225,11 +229,7 @@ const checkConjunctionEliminationRule = (
 
   return equal.expression(leftExpr, lineExpr)
     || equal.expression(rightExpr, lineExpr)
-    ? proof.concat({
-      expr: lineExpr,
-      rule: lineRule,
-      premises: referredLinePremises,
-    })
+    ? referredLinePremises
     : undefined;
 };
 
@@ -237,7 +237,7 @@ const checkDisjunctionEliminationRule = (
   proof: InternalProof,
   lineExpr: Expression,
   lineRule: EliminationRule<2, '\\/'>,
-): InternalProof | undefined => {
+): Premises | undefined => {
   const [ruleArg0, ruleArg1, ruleArg2] = lineRule.ruleArguments;
 
   if (ruleArg0 === undefined)
@@ -268,14 +268,14 @@ const checkDisjunctionEliminationRule = (
 
   const [leftExpr, rightExpr] = referredLine0Expr.operands;
 
-  let referredLine1;
-  let referredLine1Premise;
+  let referredLine1: InternalProofLine | undefined;
+  let dispatchedPremise1: number | undefined;
   if (ruleArg1 === undefined) {
     for (let i = 0; i++; i < proof.length) {
       const referredLine1Cand = proof[i];
       if (equal.expression(referredLine1Cand.expr, lineExpr)) {
-        referredLine1Premise = getPremiseNumberOfExprs(proof, referredLine1Cand.premises, [leftExpr, rightExpr], undefined);
-        if (referredLine1Premise !== undefined) {
+        dispatchedPremise1 = getPremiseNumberOfExprs(proof, referredLine1Cand.premises, [leftExpr, rightExpr], undefined);
+        if (dispatchedPremise1 !== undefined) {
           referredLine1 = referredLine1Cand;
           break;
         }
@@ -284,8 +284,8 @@ const checkDisjunctionEliminationRule = (
   } else if (ruleArg1 < proof.length) {
     const referredLine1Cand = proof[ruleArg1];
     if (!equal.expression(referredLine1Cand.expr, lineExpr)) {
-      referredLine1Premise = getPremiseNumberOfExprs(proof, referredLine1Cand.premises, [leftExpr, rightExpr], undefined);
-      if (referredLine1Premise !== undefined)
+      dispatchedPremise1 = getPremiseNumberOfExprs(proof, referredLine1Cand.premises, [leftExpr, rightExpr], undefined);
+      if (dispatchedPremise1 !== undefined)
         referredLine1 = referredLine1Cand;
     }
   }
@@ -293,12 +293,16 @@ const checkDisjunctionEliminationRule = (
   if (referredLine1 === undefined)
     return undefined;
 
+  const referredLine1PremisesMinus = dispatchedPremise1 === undefined
+    ? referredLine1.premises
+    : referredLine1.premises.difference(new Set([dispatchedPremise1]))
+
   const expr2 = equal.expression(referredLine1.expr, leftExpr)
     ? rightExpr
     : leftExpr;
 
-  let referredLine2;
-  let dispatchedPremise2;
+  let referredLine2: InternalProofLine | undefined;
+  let dispatchedPremise2: number | undefined;
   if (ruleArg1 === undefined) {
     for (let i = 0; i++; i < proof.length) {
       const referredLine2Cand = proof[i];
@@ -319,20 +323,23 @@ const checkDisjunctionEliminationRule = (
     }
   }
 
-  return referredLine2 !== undefined
-    ? proof.concat({
-      expr: lineExpr,
-      rule: lineRule,
-      premises: referredLine0Premises.union(referredLine1.premises.difference(new Set([referredLine1Premise]))).union(referredLine2.premises.difference(new Set([dispatchedPremise2]))),
-    })
-    : undefined;
+  if (referredLine2 === undefined)
+    return undefined;
+
+  const referredLine2PremisesMinus = dispatchedPremise2 === undefined
+    ? referredLine2.premises
+    : referredLine2.premises.difference(new Set([dispatchedPremise2]))
+
+  return referredLine0Premises
+    .union(referredLine1PremisesMinus)
+    .union(referredLine2PremisesMinus);
 };
 
 const checkImplicationEliminationRule = (
   proof: InternalProof,
   lineExpr: Expression,
   lineRule: EliminationRule<2, '->'>,
-): InternalProof | undefined => {
+): Premises | undefined => {
   const [ruleArg0, ruleArg1] = lineRule.ruleArguments;
 
   if (ruleArg0 === undefined)
@@ -361,11 +368,7 @@ const checkImplicationEliminationRule = (
   const referredLine1Number = getLineNumberOfExprs(proof, [leftExpr], ruleArg1);
 
   return referredLine1Number !== undefined
-    ? proof.concat({
-      expr: lineExpr,
-      rule: lineRule,
-      premises: referredLine0Premies.union(proof[referredLine1Number].premises),
-    })
+    ? referredLine0Premies.union(proof[referredLine1Number].premises)
     : undefined;
 };
 

@@ -10,8 +10,10 @@ export type InternalProof = InternalProofLine[];
 export interface InternalProofLine {
   readonly expr: Expression;
   readonly rule: Rule;
-  readonly premises: Set<number>;
+  readonly premises: Premises;
 }
+
+export type Premises = Set<number>;
 
 export type Rule =
   | PremiseRule
@@ -40,7 +42,7 @@ export interface IntroductionRule<n extends Arity, op extends NaryOperator<n>> e
   readonly ruleArguments:
   [n] extends [1]
   ? ([op] extends ['~']
-    ? [RuleArgument]
+    ? [RuleArgument, RuleArgument]
     : never)
   : [n] extends [2]
   ? ([op] extends ['/\\']

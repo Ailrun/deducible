@@ -130,7 +130,7 @@ const premiseRule = pipe(
 const negationIntroductionRule: Parjser<IntroductionRule<1, '~'>> = pipe(
   keyword('introduce'),
   qthen(negationOperator),
-  then(oneRuleArgument),
+  then(twoRuleArguments),
   map(([operator, ruleArguments]): IntroductionRule<1, '~'> => ({
     type: RuleTypes.INTRODUCTION,
     arity: 1,
