@@ -1,11 +1,11 @@
-import { types } from './';
+import * as types from './types';
 
 export const expression = (expr0: types.Expression, expr1: types.Expression): boolean => {
-  if (expr0.logicExpressionType !== expr1.logicExpressionType) {
+  if (expr0.type !== expr1.type) {
     return false;
   }
 
-  switch (expr0.logicExpressionType) {
+  switch (expr0.type) {
     case types.ExpressionTypes.PROPOSITION:
       return expr0.identifier === (expr1 as types.PropositionExpression).identifier;
     case types.ExpressionTypes.REFERENCE:
@@ -13,11 +13,11 @@ export const expression = (expr0: types.Expression, expr1: types.Expression): bo
     case types.ExpressionTypes.UNARY:
       /* This is necessary to be future-proof */
       /* eslint-disable-next-line @typescript-eslint/no-unnecessary-condition */
-      return expr0.operator === (expr1 as types.UnaryExpression).operator
-        && expr0.operand === (expr1 as types.UnaryExpression).operand;
+      return expr0.operator === (expr1 as types.NaryExpression<1>).operator
+        && expr0.operands[0] === (expr1 as types.NaryExpression<1>).operands[0];
     case types.ExpressionTypes.BINARY:
-      return expr0.operator === (expr1 as types.BinaryExpression).operator
-        && expr0.operands[0] === (expr1 as types.BinaryExpression).operands[0]
-        && expr0.operands[1] === (expr1 as types.BinaryExpression).operands[1];
+      return expr0.operator === (expr1 as types.NaryExpression<2>).operator
+        && expr0.operands[0] === (expr1 as types.NaryExpression<2>).operands[0]
+        && expr0.operands[1] === (expr1 as types.NaryExpression<2>).operands[1];
   }
 };

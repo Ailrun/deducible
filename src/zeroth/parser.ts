@@ -1,21 +1,21 @@
 import Parsimmon from 'parsimmon';
 
-import { types } from './';
+import * as types from './types';
 
 const expressionToken = <T>(p: Parsimmon.Parser<T>): Parsimmon.Parser<T> => {
   return p.skip(Parsimmon.regexp(/ */));
 };
 
-const unaryOperator = (Parsimmon.string('~') as Parsimmon.Parser<types.UnaryOperator>)
+const unaryOperator = (Parsimmon.string('~') as Parsimmon.Parser<types.NaryOperator<1>>)
   .thru(expressionToken)
   .desc('unary operator');
-const binaryOperator = (Parsimmon.regexp(/\/\\|\\\/|->/) as Parsimmon.Parser<types.BinaryOperator>)
+const binaryOperator = (Parsimmon.regexp(/\/\\|\\\/|->/) as Parsimmon.Parser<types.NaryOperator<2>>)
   .thru(expressionToken)
   .desc('binary operators');
 
 const propositionExpression = Parsimmon.regexp(/[a-zA-Z_'][a-zA-Z0-9_']*/)
   .map((identifier): types.PropositionExpression => ({
-    logicExpressionType: types.ExpressionTypes.PROPOSITION,
+    type: types.ExpressionTypes.PROPOSITION,
     identifier,
   }))
   .thru(expressionToken)
@@ -23,7 +23,7 @@ const propositionExpression = Parsimmon.regexp(/[a-zA-Z_'][a-zA-Z0-9_']*/)
 
 const referenceExpression = Parsimmon.digit.atLeast(1).tie()
   .map((lineNumberString): types.ReferenceExpression => ({
-    logicExpressionType: types.ExpressionTypes.REFERENCE,
+    type: types.ExpressionTypes.REFERENCE,
     lineNumber: parseInt(lineNumberString, 10),
   }))
   .thru(expressionToken)
@@ -41,10 +41,10 @@ const unaryExpression = Parsimmon.alt(
   Parsimmon.seqMap(
     unaryOperator,
     atomicExpression,
-    (operator, operand): types.UnaryExpression => ({
-      logicExpressionType: types.ExpressionTypes.UNARY,
+    (operator, operand): types.NaryExpression<1> => ({
+      type: types.ExpressionTypes.UNARY,
       operator,
-      operand,
+      operands: [operand],
     }),
   ),
   atomicExpression
@@ -56,8 +56,8 @@ const binaryExpression = Parsimmon.alt(
     unaryExpression,
     binaryOperator,
     unaryExpression,
-    (operand0, operator, operand1): types.BinaryExpression => ({
-      logicExpressionType: types.ExpressionTypes.BINARY,
+    (operand0, operator, operand1): types.NaryExpression<2> => ({
+      type: types.ExpressionTypes.BINARY,
       operator,
       operands: [operand0, operand1],
     }),
