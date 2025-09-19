@@ -5,8 +5,9 @@
     "forceConsistentCasingInFileNames": true,
     "importsNotUsedAsValues": "remove",
     "jsx": "preserve",
-    "lib": ["ESnext"],
-    "moduleResolution": "bundler",
+    "lib": ["ESnext", "DOM"],
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
     "noErrorTruncation": true,
     "noFallthroughCasesInSwitch": true,
     "noImplicitAny": true,
@@ -22,6 +23,7 @@
     "useDefineForClassFields": true
   },
   "include": [
-    "src/**/*"
+    "src/**/*",
+    "test/**/*"
   ]
 }

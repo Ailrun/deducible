@@ -1,36 +1,32 @@
-import { Parjser, int, regexp, result, space, string } from 'parjs';
-import { between, later, manySepBy, map, maybe, or, pipe, qthen, then, thenq } from 'parjs/combinators';
+import { ImplicitParjser, Parjser, int, newline, regexp, space, string, whitespace } from 'parjs';
+import { between, later, many, manySepBy, map, mapConst, maybe, must, or, pipe, qthen, then, thenq } from 'parjs/combinators';
 
-import { EliminationRule, EliminationRules, Expression, ExpressionTypes, IntroductionRule, IntroductionRules, NaryExpression, NaryOperator, PremiseRule, PropositionExpression, ReferenceExpression, Rule, RuleArgument, RuleTypes } from './types';
+import { EliminationRule, EliminationRules, Expression, ExpressionTypes, IntroductionRule, IntroductionRules, NaryExpression, NaryOperator, PremiseRule, Proof, ProofLine, PropositionExpression, Rule, RuleArgument, RuleTypes } from './types';
 
-const lexToken = <T>() => thenq<T>(space());
+const lexToken = <T>(x: ImplicitParjser<T>) => thenq<T>(space().pipe(many()))(x);
 
 const symbol = <const T extends string>(s: T): Parjser<T> =>
-  string<T>(s).pipe(lexToken());
+  string<T>(s).pipe(lexToken);
 
 const keyword = <const T extends string>(s: T): Parjser<T> =>
-  string<T>(s).pipe(lexToken());
+  string<T>(s).pipe(lexToken);
 
-const lineNumber = int({ allowSign: false }).pipe(lexToken());
+const lineNumber = pipe(
+  int({ allowSign: false }),
+  must(n => n > 0 ? true : { reason: 'line number should be positive' }),
+  map(n => n - 1),
+  lexToken,
+);
 
 const negationOperator = symbol('~');
 const conjunctionOperator = symbol('/\\');
 const disjunctionOperator = symbol('\\/');
 const implicationOperator = symbol('->');
 
-const propositionIdentifier = regexp(/[a-zA-Z_'][a-zA-Z0-9_']*/).pipe(map(r => r[0]))
+const propositionIdentifier = regexp(/[a-zA-Z_'][a-zA-Z0-9_']*/).pipe(map(r => r[0]), lexToken)
 
 const unaryOperator: Parjser<NaryOperator<1>> = negationOperator
   .expects('unary operator');
-
-const binaryOperator: Parjser<NaryOperator<2>> = pipe(
-  conjunctionOperator,
-  or(
-    disjunctionOperator,
-    implicationOperator,
-  ),
-)
-  .expects('binary operators');
 
 const propositionExpression = pipe(
   propositionIdentifier,
@@ -38,19 +34,7 @@ const propositionExpression = pipe(
     type: ExpressionTypes.PROPOSITION,
     identifier,
   })),
-  lexToken(),
-)
-  .expects('proposition');
-
-const referenceExpression = pipe(
-  lineNumber,
-  map((lineNumber): ReferenceExpression => ({
-    type: ExpressionTypes.REFERENCE,
-    lineNumber,
-  })),
-  lexToken(),
-)
-  .expects('line reference');
+);
 
 const atomicExpression = later<Expression>();
 
@@ -66,37 +50,29 @@ const unaryExpression = pipe(
     })),
   ),
   or(atomicExpression),
-  lexToken(),
 )
 
-const binaryExpression = pipe(
-  pipe(
-    unaryExpression,
-    then(
-      binaryOperator,
-      unaryExpression,
-    ),
-    map(([operand0, operator, operand1]): NaryExpression<2> => ({
-      type: ExpressionTypes.NARY,
-      arity: 2,
-      operator,
-      operands: [operand0, operand1],
-    })),
-  ),
-  or(unaryExpression),
-  lexToken(),
+const binaryExpression = <const BinOp extends NaryOperator<2>>(lowerExpr: Parjser<Expression>, binOp: BinOp, binOpP: Parjser<BinOp>) => pipe(
+  lowerExpr,
+  then(pipe(binOpP.pipe(qthen(lowerExpr)), many())),
+  map(([operand, operands]) => [operand, ...operands].reduceRight((expr, newExpr): NaryExpression<2> => ({
+    type: ExpressionTypes.NARY,
+    arity: 2,
+    operator: binOp,
+    operands: [newExpr, expr],
+  }))),
 );
 
-export const expression: Parjser<Expression> = pipe(
-  binaryExpression,
-  lexToken(),
-);
+const expression1: Parjser<Expression> = binaryExpression(unaryExpression, '/\\', conjunctionOperator);
+
+const expression0: Parjser<Expression> = binaryExpression(expression1, '\\/', disjunctionOperator);
+
+export const expression: Parjser<Expression> = binaryExpression(expression0, '->', implicationOperator);
 
 atomicExpression.init(
   pipe(
     propositionExpression,
     or(
-      referenceExpression,
       expression.pipe(between(symbol('('), symbol(')'))),
     ),
   )
@@ -122,14 +98,13 @@ const threeRuleArguments = pipe(
 
 const premiseRule = pipe(
   keyword('premise'),
-  qthen(result<PremiseRule>({ type: RuleTypes.PREMISE })),
-  lexToken(),
+  mapConst<PremiseRule>({ type: RuleTypes.PREMISE }),
 )
   .expects('premise rule');
 
 const negationIntroductionRule: Parjser<IntroductionRule<1, '~'>> = pipe(
-  keyword('introduce'),
-  qthen(negationOperator),
+  negationOperator,
+  thenq(keyword('with')),
   then(twoRuleArguments),
   map(([operator, ruleArguments]): IntroductionRule<1, '~'> => ({
     type: RuleTypes.INTRODUCTION,
@@ -137,13 +112,12 @@ const negationIntroductionRule: Parjser<IntroductionRule<1, '~'>> = pipe(
     operator,
     ruleArguments,
   })),
-  lexToken()
 )
   .expects('negation introduction rule');
 
 const conjunctionIntroductionRule: Parjser<IntroductionRule<2, '/\\'>> = pipe(
-  keyword('introduce'),
-  qthen(conjunctionOperator),
+  conjunctionOperator,
+  thenq(keyword('with')),
   then(twoRuleArguments),
   map(([operator, ruleArguments]): IntroductionRule<2, '/\\'> => ({
     type: RuleTypes.INTRODUCTION,
@@ -151,13 +125,12 @@ const conjunctionIntroductionRule: Parjser<IntroductionRule<2, '/\\'>> = pipe(
     operator,
     ruleArguments,
   })),
-  lexToken()
 )
   .expects('conjunction introduction rule');
 
 const disjunctionIntroductionRule: Parjser<IntroductionRule<2, '\\/'>> = pipe(
-  keyword('introduce'),
-  qthen(disjunctionOperator),
+  disjunctionOperator,
+  thenq(keyword('with')),
   then(oneRuleArgument),
   map(([operator, ruleArguments]): IntroductionRule<2, '\\/'> => ({
     type: RuleTypes.INTRODUCTION,
@@ -165,13 +138,12 @@ const disjunctionIntroductionRule: Parjser<IntroductionRule<2, '\\/'>> = pipe(
     operator,
     ruleArguments,
   })),
-  lexToken()
 )
   .expects('disjunction introduction rule');
 
 const implicationIntroductionRule: Parjser<IntroductionRule<2, '->'>> = pipe(
-  keyword('introduce'),
-  qthen(implicationOperator),
+  implicationOperator,
+  thenq(keyword('with')),
   then(twoRuleArguments),
   map(([operator, ruleArguments]): IntroductionRule<2, '->'> => ({
     type: RuleTypes.INTRODUCTION,
@@ -179,23 +151,24 @@ const implicationIntroductionRule: Parjser<IntroductionRule<2, '->'>> = pipe(
     operator,
     ruleArguments,
   })),
-  lexToken()
 )
   .expects('implication introduction rule');
 
 const introductionRule: Parjser<IntroductionRules> = pipe(
-  negationIntroductionRule,
-  or(
-    conjunctionIntroductionRule,
-    disjunctionIntroductionRule,
-    implicationIntroductionRule,
-  ),
-  lexToken(),
+  keyword('introduce'),
+  qthen(negationIntroductionRule
+    .pipe(
+      or(
+        conjunctionIntroductionRule,
+        disjunctionIntroductionRule,
+        implicationIntroductionRule,
+      ),
+    )),
 );
 
 const negationEliminationRule: Parjser<EliminationRule<1, '~'>> = pipe(
-  keyword('eliminate'),
-  qthen(negationOperator),
+  negationOperator,
+  thenq(keyword('with')),
   then(twoRuleArguments),
   map(([operator, ruleArguments]): EliminationRule<1, '~'> => ({
     type: RuleTypes.ELIMINATION,
@@ -203,13 +176,12 @@ const negationEliminationRule: Parjser<EliminationRule<1, '~'>> = pipe(
     operator,
     ruleArguments,
   })),
-  lexToken()
 )
   .expects('negation elimination rule');
 
 const conjunctionEliminationRule: Parjser<EliminationRule<2, '/\\'>> = pipe(
-  keyword('eliminate'),
-  qthen(conjunctionOperator),
+  conjunctionOperator,
+  thenq(keyword('with')),
   then(oneRuleArgument),
   map(([operator, ruleArguments]): EliminationRule<2, '/\\'> => ({
     type: RuleTypes.ELIMINATION,
@@ -217,13 +189,12 @@ const conjunctionEliminationRule: Parjser<EliminationRule<2, '/\\'>> = pipe(
     operator,
     ruleArguments,
   })),
-  lexToken()
 )
   .expects('conjunction elimination rule');
 
 const disjunctionEliminationRule: Parjser<EliminationRule<2, '\\/'>> = pipe(
-  keyword('eliminate'),
-  qthen(disjunctionOperator),
+  disjunctionOperator,
+  thenq(keyword('with')),
   then(threeRuleArguments),
   map(([operator, ruleArguments]): EliminationRule<2, '\\/'> => ({
     type: RuleTypes.ELIMINATION,
@@ -231,13 +202,12 @@ const disjunctionEliminationRule: Parjser<EliminationRule<2, '\\/'>> = pipe(
     operator,
     ruleArguments,
   })),
-  lexToken()
 )
   .expects('disjunction elimination rule');
 
 const implicationEliminationRule: Parjser<EliminationRule<2, '->'>> = pipe(
-  keyword('eliminate'),
-  qthen(implicationOperator),
+  implicationOperator,
+  thenq(keyword('with')),
   then(twoRuleArguments),
   map(([operator, ruleArguments]): EliminationRule<2, '->'> => ({
     type: RuleTypes.ELIMINATION,
@@ -245,18 +215,19 @@ const implicationEliminationRule: Parjser<EliminationRule<2, '->'>> = pipe(
     operator,
     ruleArguments,
   })),
-  lexToken()
 )
   .expects('implication elimination rule');
 
 const eliminationRule: Parjser<EliminationRules> = pipe(
-  negationEliminationRule,
-  or(
-    conjunctionEliminationRule,
-    disjunctionEliminationRule,
-    implicationEliminationRule,
-  ),
-  lexToken(),
+  keyword('eliminate'),
+  qthen(negationEliminationRule
+    .pipe(
+      or(
+        conjunctionEliminationRule,
+        disjunctionEliminationRule,
+        implicationEliminationRule,
+      ),
+    )),
 );
 
 export const rule: Parjser<Rule> = pipe(
@@ -265,5 +236,19 @@ export const rule: Parjser<Rule> = pipe(
     introductionRule,
     eliminationRule,
   ),
-  lexToken(),
+);
+
+export const proofline: Parjser<ProofLine> = pipe(
+  expression,
+  thenq(symbol("|")),
+  then(rule),
+  thenq(newline()),
+  map(([expr, rule]): ProofLine => ({ expr, rule })),
+);
+
+export const proof: Parjser<Proof> = pipe(
+  whitespace(),
+  qthen(proofline),
+  many(),
+  between(whitespace(), whitespace()),
 );

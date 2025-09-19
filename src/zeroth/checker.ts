@@ -3,31 +3,35 @@ import assert from 'assert';
 import * as equal from './equal';
 import { EliminationRule, EliminationRules, Expression, ExpressionTypes, InternalProof, InternalProofLine, IntroductionRule, IntroductionRules, NaryExpression, Premises, Proof, ProofLine, RuleTypes } from './types';
 
-export const CheckProofOf = (prf: Proof, expr: Expression): InternalProof | undefined => {
+export type CheckerResult = InternalProof | CheckerError;
+
+export type CheckerError = { error: ProofLine };
+
+export const checkProofOf = (prf: Proof, expr: Expression): CheckerResult => {
   const proof = checkProof(prf);
 
-  if (proof === undefined)
-    return undefined;
+  if (isCheckerError(proof))
+    return proof;
 
   if (!equal.expression(proof[proof.length - 1].expr, expr))
-    return undefined;
+    return checkerErrorFromLine(proof[proof.length - 1]);
 
   return proof;
 };
 
-export const checkProof = (prf: Proof): InternalProof | undefined => {
+export const checkProof = (prf: Proof): CheckerResult => {
   let proof: InternalProof = [];
   for (const line of prf) {
     const nextProof = checkProofLine(proof, line);
 
     if (nextProof === undefined)
-      return undefined;
+      return checkerErrorFromLine(line);
 
     proof = nextProof;
   }
 
   if (proof[proof.length - 1].premises.size !== 0)
-    return undefined;
+    return checkerErrorFromLine(proof[proof.length - 1]);
 
   return proof;
 };
@@ -386,7 +390,7 @@ const getLineNumberOfExprs = (
     }
   } else if (defLine < proof.length) {
     const lineExpr = proof[defLine].expr;
-    if (exprs.every((expr) => !equal.expression(lineExpr, expr)))
+    if (exprs.some((expr) => equal.expression(lineExpr, expr)))
       return defLine;
   }
 
@@ -409,9 +413,13 @@ const getPremiseNumberOfExprs = (
   } else if (defLine < proof.length) {
     const premiseExpr = proof[defLine].expr;
     if (premises.has(defLine)
-      && exprs.every((expr) => !equal.expression(premiseExpr, expr)))
+      && exprs.some((expr) => equal.expression(premiseExpr, expr)))
       return defLine;
   }
 
   return undefined;
 };
+
+export const isCheckerError = (x: CheckerResult): x is CheckerError => 'error' in x;
+
+const checkerErrorFromLine = (error: ProofLine): CheckerError => ({ error });

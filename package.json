@@ -21,7 +21,9 @@
     "build": "run-s clean compile",
     "clean": "rimraf dist",
     "compile": "tsc -p .",
-    "start": "node -e \"console.error(\\\"This library does not have any way to start!\\n\\\"); process.exit(1)\""
+    "start": "node -e \"console.error(\\\"This library does not have any way to start!\\n\\\"); process.exit(1)\"",
+    "pretest": "run-s build",
+    "test": "node dist/test/test.js"
   },
   "dependencies": {
     "@types/assert": "^1.5.11",
