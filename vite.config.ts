@@ -21,5 +21,9 @@ export default defineConfig({
   plugins: [tsconfigPaths(), dts({ include: './src/*' })],
   test: {
     include: ['test/**/*.test.[jt]s'],
+    setupFiles: [
+      require.resolve('set.prototype.union/auto'),
+      require.resolve('set.prototype.difference/auto'),
+    ]
   },
 });
