@@ -1,6 +1,7 @@
 import assert from 'assert';
 
-import { Expression, ExpressionTypes } from './types';
+import type { Expression } from './types';
+import { ExpressionTypes } from './types';
 
 export const expression = (expr0: Expression, expr1: Expression): boolean => {
   if (expr0.type !== expr1.type)

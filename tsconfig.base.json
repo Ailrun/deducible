@@ -1,0 +1,30 @@
+{
+  "compilerOptions": {
+    "alwaysStrict": true,
+    "composite": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "importsNotUsedAsValues": "remove",
+    "jsx": "preserve",
+    "lib": ["ESnext", "DOM"],
+    "module": "esnext",
+    "moduleResolution": "Bundler",
+    "noEmit": true,
+    "noErrorTruncation": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitAny": true,
+    "noImplicitReturns": true,
+    "noImplicitThis": true,
+    "paths": {
+      "@/*": ["./src/*"],
+      "@": ["./src"]
+    },
+    "strict": true,
+    "strictBindCallApply": true,
+    "strictFunctionTypes": true,
+    "strictPropertyInitialization": true,
+    "strictNullChecks": true,
+    "target": "ES2015",
+    "useDefineForClassFields": true
+  }
+}

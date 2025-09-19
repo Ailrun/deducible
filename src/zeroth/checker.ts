@@ -1,7 +1,8 @@
 import assert from 'assert';
 
 import * as equal from './equal';
-import { EliminationRule, EliminationRules, Expression, ExpressionTypes, InternalProof, InternalProofLine, IntroductionRule, IntroductionRules, NaryExpression, Premises, Proof, ProofLine, RuleTypes } from './types';
+import type { EliminationRule, EliminationRules, Expression, InternalProof, InternalProofLine, IntroductionRule, IntroductionRules, NaryExpression, Premises, Proof, ProofLine } from './types';
+import { ExpressionTypes, RuleTypes } from './types';
 
 export type CheckerResult = InternalProof | CheckerError;
 
