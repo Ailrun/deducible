@@ -4,35 +4,25 @@ import * as equal from './equal';
 import type { EliminationRule, EliminationRules, Expression, InternalProof, InternalProofLine, IntroductionRule, IntroductionRules, NaryExpression, Premises, Proof, ProofLine } from './types';
 import { ExpressionTypes, RuleTypes } from './types';
 
-export type CheckerResult = InternalProof | CheckerError;
-
-export type CheckerError = { error: ProofLine };
-
-export const checkProofOf = (prf: Proof, expr: Expression): CheckerResult => {
+export const checkProofOf = (prf: Proof, expr: Expression): InternalProof => {
   const proof = checkProof(prf);
 
-  if (isCheckerError(proof))
-    return proof;
-
-  if (!equal.expression(proof[proof.length - 1].expr, expr))
-    return checkerErrorFromLine(proof[proof.length - 1]);
+  const lastLine = proof[proof.length - 1];
+  if (!equal.expression(lastLine.expr, expr))
+    throw new CheckError(lastLine, proof.length);
 
   return proof;
 };
 
-export const checkProof = (prf: Proof): CheckerResult => {
-  let proof: InternalProof = [];
+export const checkProof = (prf: Proof): InternalProof => {
+  const proof: InternalProof = [];
   for (const line of prf) {
-    const nextProof = checkProofLine(proof, line);
-
-    if (nextProof === undefined)
-      return checkerErrorFromLine(line);
-
-    proof = nextProof;
+    checkProofLine(proof, line);
   }
 
-  if (proof[proof.length - 1].premises.size !== 0)
-    return checkerErrorFromLine(proof[proof.length - 1]);
+  const lastLine = proof[proof.length - 1];
+  if (lastLine.premises.size !== 0)
+    throw new CheckError(lastLine, proof.length);
 
   return proof;
 };
@@ -40,7 +30,7 @@ export const checkProof = (prf: Proof): CheckerResult => {
 export const checkProofLine = (
   proof: InternalProof,
   line: ProofLine,
-): InternalProof | undefined => {
+): void => {
   let premises: Premises | undefined;
   switch (line.rule.type) {
     case RuleTypes.PREMISE:
@@ -55,18 +45,22 @@ export const checkProofLine = (
   }
 
   if (premises === undefined)
-    return undefined;
+    throw new CheckError(line, proof.length + 1);
 
-  return proof.concat({ ...line, premises });
+  proof[proof.length] = { ...line, premises };
 };
+
+export type CheckRuleResult = Premises | undefined;
 
 const checkIntroductionRule = (
   proof: InternalProof,
   lineExpr: Expression,
   lineRule: IntroductionRules,
-): Premises | undefined => {
-  if (lineExpr.type !== ExpressionTypes.NARY
-    || lineExpr.operator !== lineRule.operator)
+): CheckRuleResult => {
+  if (lineExpr.type !== ExpressionTypes.NARY)
+    return undefined;
+
+  if (lineExpr.operator !== lineRule.operator)
     return undefined;
 
   switch (lineRule.operator) {
@@ -89,7 +83,7 @@ const checkNegationIntroductionRule = (
   proof: InternalProof,
   lineExpr: NaryExpression<1>,
   lineRule: IntroductionRule<1, '~'>,
-): Premises | undefined => {
+): CheckRuleResult => {
   const [negatedExpr] = lineExpr.operands;
 
   const [ruleArg0, ruleArg1] = lineRule.ruleArguments;
@@ -127,7 +121,7 @@ const checkConjunctionIntroductionRule = (
   proof: InternalProof,
   lineExpr: NaryExpression<2>,
   lineRule: IntroductionRule<2, '/\\'>,
-): Premises | undefined => {
+): CheckRuleResult => {
   const [leftExpr, rightExpr] = lineExpr.operands;
 
   const [ruleArg0, ruleArg1] = lineRule.ruleArguments;
@@ -144,7 +138,7 @@ const checkDisjunctionIntroductionRule = (
   proof: InternalProof,
   lineExpr: NaryExpression<2>,
   lineRule: IntroductionRule<2, '\\/'>,
-): Premises | undefined => {
+): CheckRuleResult => {
   const [leftExpr, rightExpr] = lineExpr.operands;
 
   const [ruleArg] = lineRule.ruleArguments;
@@ -160,7 +154,7 @@ const checkImplicationIntroductionRule = (
   proof: InternalProof,
   lineExpr: NaryExpression<2>,
   lineRule: IntroductionRule<2, '->'>,
-): Premises | undefined => {
+): CheckRuleResult => {
   const [leftExpr, rightExpr] = lineExpr.operands;
 
   const [ruleArg0, ruleArg1] = lineRule.ruleArguments;
@@ -183,7 +177,7 @@ const checkEliminationRule = (
   proof: InternalProof,
   lineExpr: Expression,
   lineRule: EliminationRules,
-): Premises | undefined => {
+): CheckRuleResult => {
   switch (lineRule.operator) {
     case '~': return checkNegationEliminationRule(proof, lineExpr, lineRule);
     case '/\\': return checkConjunctionEliminationRule(proof, lineExpr, lineRule);
@@ -196,7 +190,7 @@ const checkNegationEliminationRule = (
   proof: InternalProof,
   _lineExpr: Expression,
   lineRule: EliminationRule<1, '~'>,
-): Premises | undefined => {
+): CheckRuleResult => {
   const [ruleArg0, ruleArg1] = lineRule.ruleArguments;
 
   if (ruleArg0 === undefined)
@@ -219,7 +213,7 @@ const checkConjunctionEliminationRule = (
   proof: InternalProof,
   lineExpr: Expression,
   lineRule: EliminationRule<2, '/\\'>,
-): Premises | undefined => {
+): CheckRuleResult => {
   const [ruleArg] = lineRule.ruleArguments;
 
   if (ruleArg === undefined)
@@ -242,7 +236,7 @@ const checkDisjunctionEliminationRule = (
   proof: InternalProof,
   lineExpr: Expression,
   lineRule: EliminationRule<2, '\\/'>,
-): Premises | undefined => {
+): CheckRuleResult => {
   const [ruleArg0, ruleArg1, ruleArg2] = lineRule.ruleArguments;
 
   if (ruleArg0 === undefined)
@@ -276,7 +270,7 @@ const checkDisjunctionEliminationRule = (
   let referredLine1: InternalProofLine | undefined;
   let dispatchedPremise1: number | undefined;
   if (ruleArg1 === undefined) {
-    for (let i = 0; i++; i < proof.length) {
+    for (let i = 0; i < proof.length; i++) {
       const referredLine1Cand = proof[i];
       if (equal.expression(referredLine1Cand.expr, lineExpr)) {
         dispatchedPremise1 = getPremiseNumberOfExprs(proof, referredLine1Cand.premises, [leftExpr, rightExpr], undefined);
@@ -288,7 +282,7 @@ const checkDisjunctionEliminationRule = (
     }
   } else if (ruleArg1 < proof.length) {
     const referredLine1Cand = proof[ruleArg1];
-    if (!equal.expression(referredLine1Cand.expr, lineExpr)) {
+    if (equal.expression(referredLine1Cand.expr, lineExpr)) {
       dispatchedPremise1 = getPremiseNumberOfExprs(proof, referredLine1Cand.premises, [leftExpr, rightExpr], undefined);
       if (dispatchedPremise1 !== undefined)
         referredLine1 = referredLine1Cand;
@@ -309,7 +303,7 @@ const checkDisjunctionEliminationRule = (
   let referredLine2: InternalProofLine | undefined;
   let dispatchedPremise2: number | undefined;
   if (ruleArg1 === undefined) {
-    for (let i = 0; i++; i < proof.length) {
+    for (let i = 0; i < proof.length; i++) {
       const referredLine2Cand = proof[i];
       if (equal.expression(referredLine2Cand.expr, lineExpr)) {
         dispatchedPremise2 = getPremiseNumberOfExprs(proof, referredLine2Cand.premises, [expr2], undefined);
@@ -321,7 +315,7 @@ const checkDisjunctionEliminationRule = (
     }
   } else if (ruleArg1 < proof.length) {
     const referredLine2Cand = proof[ruleArg1];
-    if (!equal.expression(referredLine2Cand.expr, lineExpr)) {
+    if (equal.expression(referredLine2Cand.expr, lineExpr)) {
       dispatchedPremise2 = getPremiseNumberOfExprs(proof, referredLine2Cand.premises, [expr2], undefined);
       if (dispatchedPremise2 !== undefined)
         referredLine2 = referredLine2Cand;
@@ -344,7 +338,7 @@ const checkImplicationEliminationRule = (
   proof: InternalProof,
   lineExpr: Expression,
   lineRule: EliminationRule<2, '->'>,
-): Premises | undefined => {
+): CheckRuleResult => {
   const [ruleArg0, ruleArg1] = lineRule.ruleArguments;
 
   if (ruleArg0 === undefined)
@@ -383,7 +377,7 @@ const getLineNumberOfExprs = (
   defLine: number | undefined,
 ): number | undefined => {
   if (defLine === undefined) {
-    for (let i = 0; i++; i < proof.length) {
+    for (let i = 0; i < proof.length; i++) {
       const lineExpr = proof[i].expr;
       if (exprs.some((expr) => equal.expression(lineExpr, expr))) {
         return i;
@@ -421,6 +415,15 @@ const getPremiseNumberOfExprs = (
   return undefined;
 };
 
-export const isCheckerError = (x: CheckerResult): x is CheckerError => 'error' in x;
+export class CheckError extends Error {
+  constructor(public error: ProofLine, public lineNumber: number, msg?: string) {
+    super(msg);
 
-const checkerErrorFromLine = (error: ProofLine): CheckerError => ({ error });
+    // Set the prototype explicitly.
+    Object.setPrototypeOf(this, CheckError.prototype);
+  }
+
+  get [Symbol.toStringTag]() {
+    return `error on ${this.lineNumber}: ${this.message} with ${this.error}`;
+  }
+};

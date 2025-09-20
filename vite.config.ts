@@ -10,20 +10,19 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 export default defineConfig({
   build: {
     lib: {
-      name: 'deducible',
       entry: [resolve(__dirname, 'src/index.ts')],
       formats: ['es', 'cjs'],
     },
     rolldownOptions: {
-      external: ['parjs', 'parjs/combinators', 'assert'],
+      external: ['parjs-then', 'parjs-then/combinators', 'assert'],
     },
   },
-  plugins: [tsconfigPaths(), dts({ include: './src/*' })],
+  plugins: [tsconfigPaths(), dts({ tsconfigPath: './src/tsconfig.json', include: ['./src/**/*.ts'] })],
   test: {
     include: ['test/**/*.test.[jt]s'],
     setupFiles: [
       require.resolve('set.prototype.union/auto'),
       require.resolve('set.prototype.difference/auto'),
-    ]
+    ],
   },
 });
