@@ -1,4 +1,4 @@
-name: Testing
+name: Building and Testing the Library
 
 on:
   workflow_dispatch: {}
@@ -20,7 +20,7 @@ jobs:
     strategy:
       matrix:
         node: [ 20, 22, 24 ]
-    name: Testing for NodeJS ${{ matrix.node }}
+    name: Building and Testing the Library with NodeJS ${{ matrix.node }}
     steps:
       - name: Get source code
         uses: actions/checkout@v5
@@ -31,5 +31,7 @@ jobs:
           cache: 'npm'
       - name: Install NPM dependencies
         run: npm ci
-      - name: Run testing
+      - name: Build library
+        run: npm run build
+      - name: Run test cases
         run: npm test
