@@ -17,7 +17,7 @@ export default defineConfig({
       external: ['parjs-then', 'parjs-then/combinators', 'assert'],
     },
   },
-  plugins: [tsconfigPaths(), dts({ tsconfigPath: './src/tsconfig.json', include: ['./src/**/*.ts'] })],
+  plugins: [tsconfigPaths(), dts({ bundleTypes: true, tsconfigPath: './src/tsconfig.json', include: ['./src/**/*.ts'] })],
   test: {
     include: ['test/**/*.test.[jt]s'],
     setupFiles: [
