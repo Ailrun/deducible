@@ -89,20 +89,22 @@ export type RuleArgument = number | undefined;
 
 export type Expression =
   | PropositionExpression
-  | ReferenceExpression
+  // | ReferenceExpression
   // Loop through all arities and all nary operators of those arities
-  | { [n in Arity]: NaryExpression<n>; }[Arity]
+  | NaryExpressions
   ;
+
+export type NaryExpressions = { [n in Arity]: NaryExpression<n>; }[Arity]
 
 export interface PropositionExpression extends BaseExpression {
   readonly type: ExpressionTypes.PROPOSITION;
   readonly identifier: string;
 }
 
-export interface ReferenceExpression extends BaseExpression {
-  readonly type: ExpressionTypes.REFERENCE;
-  readonly lineNumber: number;
-}
+// export interface ReferenceExpression extends BaseExpression {
+//   readonly type: ExpressionTypes.REFERENCE;
+//   readonly lineNumber: number;
+// }
 
 export interface NaryExpression<n extends Arity> extends BaseExpression {
   readonly type: ExpressionTypes.NARY;
@@ -117,7 +119,7 @@ interface BaseExpression {
 
 export enum ExpressionTypes {
   PROPOSITION = 'ZEROTH_EXPR_PROPOSITION',
-  REFERENCE = 'ZEROTH_EXPR_REFERENCE',
+  // REFERENCE = 'ZEROTH_EXPR_REFERENCE',
   NARY = 'ZEROTH_EXPR_NARY',
 }
 

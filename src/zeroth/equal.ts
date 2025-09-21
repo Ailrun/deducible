@@ -11,9 +11,9 @@ export const expression = (expr0: Expression, expr1: Expression): boolean => {
     case ExpressionTypes.PROPOSITION:
       assert(expr0.type === expr1.type);
       return expr0.identifier === expr1.identifier;
-    case ExpressionTypes.REFERENCE:
-      assert(expr0.type === expr1.type);
-      return expr0.lineNumber === expr1.lineNumber;
+    // case ExpressionTypes.REFERENCE:
+    //   assert(expr0.type === expr1.type);
+    //   return expr0.lineNumber === expr1.lineNumber;
     case ExpressionTypes.NARY:
       assert(expr0.type === expr1.type);
       if (expr0.operator !== expr1.operator)

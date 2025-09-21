@@ -39,9 +39,9 @@ const extractConstraint = (
       constraints.push([sExpr.identifier, tExpr]);
       return true;
 
-    case ExpressionTypes.REFERENCE:
-      return tExpr.type === sExpr.type
-        && sExpr.lineNumber === tExpr.lineNumber;
+    // case ExpressionTypes.REFERENCE:
+    //   return tExpr.type === sExpr.type
+    //     && sExpr.lineNumber === tExpr.lineNumber;
 
     case ExpressionTypes.NARY:
       if (tExpr.type !== sExpr.type
